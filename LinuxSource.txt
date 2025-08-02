@@ -9,12 +9,73 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 local Linux = {}
 
+Linux.CurrentTheme = "Default"
+Linux.Themes = {
+    Default = Color3.fromRGB(138, 43, 226),
+    Blue = Color3.fromRGB(59, 130, 246),
+    Red = Color3.fromRGB(239, 68, 68),
+    Green = Color3.fromRGB(34, 197, 94)
+}
+
+Linux.AccentElements = {}
+
 function Linux.Instance(class, props)
     local inst = Instance.new(class)
     for k, v in pairs(props or {}) do
         inst[k] = v
     end
     return inst
+end
+
+function Linux.RegisterAccentElement(element)
+    table.insert(Linux.AccentElements, element)
+end
+
+function Linux.ApplyTheme(themeName)
+    if not Linux.Themes[themeName] then return end
+    
+    local newColor = Linux.Themes[themeName]
+    Linux.CurrentTheme = themeName
+    
+    for _, element in pairs(Linux.AccentElements) do
+        if element and element.Parent then
+            local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            TweenService:Create(element, tweenInfo, {BackgroundColor3 = newColor}):Play()
+        end
+    end
+end
+
+function Linux.SaveThemeSettings()
+    local success, result = pcall(function()
+        local themeData = {
+            Theme = Linux.CurrentTheme
+        }
+        local json = HttpService:JSONEncode(themeData)
+        if writefile then
+            if not isfolder(Linux.ConfigFolder) then
+                makefolder(Linux.ConfigFolder)
+            end
+            writefile(Linux.ConfigFolder .. "/theme.json", json)
+            return true
+        else
+            return false, "writefile function not available"
+        end
+    end)
+    return success, result
+end
+
+function Linux.LoadThemeSettings()
+    local success, result = pcall(function()
+        if readfile and isfile(Linux.ConfigFolder .. "/theme.json") then
+            local json = readfile(Linux.ConfigFolder .. "/theme.json")
+            local themeData = HttpService:JSONDecode(json)
+            Linux.CurrentTheme = themeData.Theme or "Default"
+            return true
+        else
+            return false, "Theme settings file not found"
+        end
+    end)
+    return success, result
 end
 
 function Linux:SafeCallback(Function, ...)
@@ -141,7 +202,7 @@ function Linux:Notify(config)
     
     local ProgressFill = Linux.Instance("Frame", {
         Parent = ProgressBar,
-        BackgroundColor3 = Color3.fromRGB(138, 43, 226),
+        BackgroundColor3 = Linux.Themes[Linux.CurrentTheme],
         Size = UDim2.new(0, 0, 1, 0),
         ZIndex = 101,
         BorderSizePixel = 1,
@@ -152,6 +213,8 @@ function Linux:Notify(config)
         Parent = ProgressFill,
         CornerRadius = UDim.new(1, 0)
     })
+    
+    Linux.RegisterAccentElement(ProgressFill)
     
     local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     TweenService:Create(Notification, tweenInfo, {Position = UDim2.new(0, startPosX, 1, -notificationHeight - 10)}):Play()
@@ -370,7 +433,7 @@ function Linux.LoadConfigList()
                 local fileName = string.match(file, "[^/\\]+$")
                 local configName = string.match(fileName, "(.+)%.json$")
                 
-                if configName and configName ~= "autoload" and configName ~= "privacy" then
+                if configName and configName ~= "autoload" and configName ~= "privacy" and configName ~= "theme" then
                     table.insert(Linux.SavedConfigs, configName)
                 end
             end
@@ -391,6 +454,7 @@ function Linux.Create(config)
     
     Linux.LoadAutoLoadSettings()
     Linux.LoadPrivacySettings()
+    Linux.LoadThemeSettings()
     
     local randomName = "UI_" .. tostring(math.random(100000, 999999))
     for _, v in pairs(game.CoreGui:GetChildren()) do
@@ -988,7 +1052,7 @@ function Linux.Create(config)
         
         local TabAccentBar = Linux.Instance("Frame", {
             Parent = TabBtn,
-            BackgroundColor3 = Color3.fromRGB(138, 43, 226),
+            BackgroundColor3 = Linux.Themes[Linux.CurrentTheme],
             BackgroundTransparency = 0,
             BorderSizePixel = 0,
             Size = UDim2.new(0, 0, 0, 24),
@@ -1000,6 +1064,8 @@ function Linux.Create(config)
             Parent = TabAccentBar,
             CornerRadius = UDim.new(0, 4)
         })
+        
+        Linux.RegisterAccentElement(TabAccentBar)
         
         local TabIcon
         if config.Icon and config.Enabled then
@@ -1495,7 +1561,7 @@ function Linux.Create(config)
                 if thisTrack and thisKnob then
                     local tween = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
                     if currentState then
-                        TweenService:Create(thisTrack, tween, {BackgroundColor3 = Color3.fromRGB(138, 43, 226)}):Play()
+                        TweenService:Create(thisTrack, tween, {BackgroundColor3 = Linux.Themes[Linux.CurrentTheme]}):Play()
                         TweenService:Create(thisKnob, tween, {Position = UDim2.new(0, 20, 0.5, -7), BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
                     else
                         TweenService:Create(thisTrack, tween, {BackgroundColor3 = Color3.fromRGB(17, 17, 18)}):Play()
@@ -1799,7 +1865,7 @@ function Linux.Create(config)
                         
                         local OptAccentBar = Linux.Instance("Frame", {
                             Parent = OptBtn,
-                            BackgroundColor3 = Color3.fromRGB(138, 43, 226),
+                            BackgroundColor3 = Linux.Themes[Linux.CurrentTheme],
                             BackgroundTransparency = 0,
                             BorderSizePixel = 0,
                             Size = isSelected and UDim2.new(0, 4, 0, 20) or UDim2.new(0, 0, 0, 20),
@@ -1811,6 +1877,8 @@ function Linux.Create(config)
                             Parent = OptAccentBar,
                             CornerRadius = UDim.new(0, 4)
                         })
+                        
+                        Linux.RegisterAccentElement(OptAccentBar)
                         
                         OptBtn.MouseButton1Click:Connect(function()
                             if IsMulti then
@@ -2062,7 +2130,7 @@ function Linux.Create(config)
             
             local FillBar = Linux.Instance("Frame", {
                 Parent = SliderBar,
-                BackgroundColor3 = Color3.fromRGB(138, 43, 226),
+                BackgroundColor3 = Linux.Themes[Linux.CurrentTheme],
                 Size =  UDim2.new(0, 0, 1, 0),
                 ZIndex = 2,
                 BorderSizePixel = 1,
@@ -2074,6 +2142,8 @@ function Linux.Create(config)
                 Parent = FillBar,
                 CornerRadius = UDim.new(1, 0)
             })
+            
+            Linux.RegisterAccentElement(FillBar)
             
             local SliderKnob = Linux.Instance("Frame", {
                 Parent = SliderBar,
@@ -2848,6 +2918,26 @@ function Linux.Create(config)
                 Linux.PrivacyEnabled = state
                 Linux.SavePrivacySettings()
                 UpdatePrivacyDisplay()
+            end
+        })
+        
+        SettingsTab.Section({Name = "Themes", Container = 1})
+        local themeDropdown = SettingsTab.Dropdown({
+            Name = "Theme",
+            Options = {"Default", "Blue", "Red", "Green"},
+            Default = Linux.CurrentTheme,
+            Container = 1,
+            Callback = function(selected)
+                Linux.CurrentTheme = selected
+            end
+        })
+        
+        SettingsTab.Button({
+            Name = "Apply Theme",
+            Container = 1,
+            Callback = function()
+                Linux.ApplyTheme(Linux.CurrentTheme)
+                Linux.SaveThemeSettings()
             end
         })
     end
